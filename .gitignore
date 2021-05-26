@@ -1,5 +1,5 @@
 build/
-public/
+html/
 dist/
 env/
 *egg-info*
