@@ -4,6 +4,7 @@ import numpy as np
 
 from sledge import sledge_score
 
+
 class TestSimpleCalculations(unittest.TestCase):
 
     def test_basic(self):
@@ -18,6 +19,7 @@ class TestSimpleCalculations(unittest.TestCase):
 
         score = sledge_score(X, labels)
         self.assertEqual(2, len(score))
+
 
 if __name__ == '__main__':
     unittest.main()
