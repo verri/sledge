@@ -25,7 +25,7 @@ def semantic_descriptors(X, labels, minimum_support=0.0):
 
     features = X.columns
 
-    # 1-itemsets, for greater k
+    # 1-itemsets, for greater k we need a different algorithm
     support = X.groupby(pd.Series(labels)).apply(np.mean)
 
     # Particularization
@@ -41,20 +41,24 @@ def semantic_descriptors(X, labels, minimum_support=0.0):
         support.loc[toremove, feature] = 0
 
     support[support < minimum_support] = 0
+    print(support.transpose())
     return support.transpose()
 
 
 def sledge_score_clusters(
         X,
         labels,
+        minimum_support=0.0,
         aggregation='harmonic',
         return_descriptors=False):
 
     nclusters = max(labels) + 1
-    descriptors = semantic_descriptors(X, labels)
+    descriptors = semantic_descriptors(X, labels,
+            minimum_support=minimum_support)
 
     return [0 for _ in range(nclusters)]
 
 
-def sledge_score(X, labels):
-    return np.mean(sledge_score_clusters(X, labels))
+def sledge_score(X, labels, minimum_support=0.0):
+    return np.mean(sledge_score_clusters(X, labels,
+        minimum_support=minimum_support))
