@@ -200,10 +200,10 @@ def sledge_curve(X, labels, minimum_support=0.0, aggregation='harmonic'):
     -------
     fractions: array-like of shape (>2,)
         Decreasing rate that element `i` is the fraction of clusters with
-        SLEDge score > `thresholds[i]`.  `fractions[0]` is always `0`.
+        SLEDge score > `thresholds[i]`.  `fractions[0]` is always `1`.
     thresholds: array-like of shape (>2, )
         Increasing thresholds of the cluster SLEDge score used to compute
-        `fractions`.  `thresholds[0]` is alway `0` and `thresholds[-1]` is
+        `fractions`.  `thresholds[0]` is always `0` and `thresholds[-1]` is
         always `1`.
     """
     scores = sledge_score_clusters(X, labels, minimum_support=minimum_support,
