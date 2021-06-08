@@ -10,14 +10,28 @@ from statistics import harmonic_mean
 
 def semantic_descriptors(X, labels, minimum_support=0.0):
     """
+    Semantic descriptors based on feature support.
+
+    This function computes the support of the present feature (1-itemsets
+    composed by the features with value 1) of the samples in each cluster.
+
+    Features in a cluster that do not meet either the *particularization
+    criterion* or the `minimum_support` have their support zeroed.
+
     Parameters
     ----------
-    X : array_like
-        TODO...
-    labels: list of ints
-        TODO...
+    X: array-like of shape (n_samples, n_features)
+        Feature array of each sample.  All features must be binary.
+    labels: array-like of shape (n_samples,)
+        Cluster labels for each sample starting in 0.
     minimum_support: float
-        Minimum support (percentage)
+        Minimum support threshold.
+
+    Returns
+    -------
+    descriptors: array-like of shape (n_clusters, n_features)
+        Matrix with the computed particularized support of features in each
+        cluster.
     """
 
     nclusters = max(labels) + 1
@@ -50,8 +64,33 @@ def sledge_score_clusters(
         X,
         labels,
         minimum_support=0.0,
-        aggregation='harmonic',
-        return_descriptors=False):
+        aggregation='harmonic'):
+    """
+    SLEDge score for each cluster.
+
+    This function computes the SLEDge score of each cluster.
+
+    If `aggregation` is `None`, returns a matrix with values *S*, *L*, *E*, and
+    *D* for each cluster.
+
+    Parameters
+    ----------
+    X: array-like of shape (n_samples, n_features)
+        Feature array of each sample.  All features must be binary.
+    labels: array-like of shape (n_samples,)
+        Cluster labels for each sample starting in 0.
+    minimum_support: float
+        Minimum support threshold.
+    aggregation: {'harmonic', None}
+        Strategy to aggregate values of *S*, *L*, *E*, and *D*.
+
+    Returns
+    -------
+    score: array-like of shape (n_clusters,)
+        SLEDge score for each cluster.
+    score_matrix: array-like of shape (n_clusters, 4) if `aggregation` is None
+        S,L,E,D score for each cluster.
+    """
 
     nclusters = max(labels) + 1
     descriptors = semantic_descriptors(
@@ -109,6 +148,27 @@ def sledge_score_clusters(
 
 
 def sledge_score(X, labels, minimum_support=0.0, aggregation='harmonic'):
+    """
+    SLEDge score.
+
+    This function computes the average SLEDge score of all clusters.
+
+    Parameters
+    ----------
+    X: array-like of shape (n_samples, n_features)
+        Feature array of each sample.  All features must be binary.
+    labels: array-like of shape (n_samples,)
+        Cluster labels for each sample starting in 0.
+    minimum_support: float
+        Minimum support threshold.
+    aggregation: {'harmonic'}
+        Strategy to aggregate values of *S*, *L*, *E*, and *D* for each cluster.
+
+    Returns
+    -------
+    score: float
+        Average SLEDge score.
+    """
     assert aggregation is not None
     return np.mean(sledge_score_clusters(X, labels,
                                          minimum_support=minimum_support,
