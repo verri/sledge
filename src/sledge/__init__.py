@@ -5,7 +5,7 @@ Python package `sledge`: semantic evaluation of clustering results.
 import pandas as pd
 import numpy as np
 import math
-from statistics import harmonic_mean
+import statistics
 
 
 def semantic_descriptors(X, labels, minimum_support=0.0):
@@ -81,7 +81,7 @@ def sledge_score_clusters(
         Cluster labels for each sample starting in 0.
     minimum_support: float
         Minimum support threshold.
-    aggregation: {'harmonic', None}
+    aggregation: {'harmonic', 'geometric', 'median', None}
         Strategy to aggregate values of *S*, *L*, *E*, and *D*.
 
     Returns
@@ -140,7 +140,11 @@ def sledge_score_clusters(
                                     'E': exclusive_score, 'D': diff_score})
 
     if aggregation == 'harmonic':
-        score = score.transpose().apply(harmonic_mean)
+        score = score.transpose().apply(statistics.harmonic_mean)
+    elif aggregation == 'geometric':
+        score = score.transpose().apply(statistics.geometric_mean)
+    elif aggregation == 'median':
+        score = score.transpose().apply(statistics.median)
     else:
         assert aggregation is None
 
@@ -161,7 +165,7 @@ def sledge_score(X, labels, minimum_support=0.0, aggregation='harmonic'):
         Cluster labels for each sample starting in 0.
     minimum_support: float
         Minimum support threshold.
-    aggregation: {'harmonic'}
+    aggregation: {'harmonic', 'geometric', 'median'}
         Strategy to aggregate values of *S*, *L*, *E*, and *D* for each cluster.
 
     Returns
