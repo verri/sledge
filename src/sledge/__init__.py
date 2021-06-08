@@ -59,16 +59,22 @@ def sledge_score_clusters(
 
     # S: Average support for descriptors (features with particularized support
     # greater than zero)
-    def mean_gt_zero(x): return np.mean(x[x > 0])
+    def mean_gt_zero(x): return 0 if np.count_nonzero(
+        x) == 0 else np.mean(x[x > 0])
     support_score = [mean_gt_zero(descriptors[cluster])
                      for cluster in range(nclusters)]
 
     # L: Description set size deviation
     descriptor_set_size = np.array([np.count_nonzero(descriptors[cluster]) for
                                    cluster in range(nclusters)])
-    average_set_size = np.mean(descriptor_set_size)
-    length_score = [1.0 / (1.0 + abs(set_size - average_set_size))
-                    for set_size in descriptor_set_size]
+    # XXX: I am ignoring the clusters that have zero descriptors in the average
+    # and considering length score equals zero if the cluster has no
+    # descriptors
+    average_set_size = np.mean(descriptor_set_size[descriptor_set_size > 0])
+    length_score = [0 if set_size == 0 else 1.0 /
+                    (1.0 +
+                     abs(set_size -
+                         average_set_size)) for set_size in descriptor_set_size]
 
     # E: Exclusivity
     descriptor_sets = np.array([frozenset(
@@ -80,8 +86,8 @@ def sledge_score_clusters(
                 np.delete(
                     descriptor_sets,
                     cluster))) for cluster in range(nclusters)]
-    exclusive_score = [len(exclusive_sets[cluster]) /
-                       len(descriptor_sets[cluster]) for cluster in range(nclusters)]
+    exclusive_score = [0 if len(descriptor_sets[cluster]) == 0 else len(
+        exclusive_sets[cluster]) / len(descriptor_sets[cluster]) for cluster in range(nclusters)]
 
     # D: Maximum ordered support difference
     # XXX: I implemented a little bit different from the paper. I always
