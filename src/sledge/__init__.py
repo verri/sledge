@@ -4,6 +4,7 @@ Python package `sledge`: semantic evaluation of clustering results.
 
 import pandas as pd
 import numpy as np
+import math
 from statistics import harmonic_mean
 
 
@@ -87,7 +88,7 @@ def sledge_score_clusters(
     # consider that there is a _dummy_ descriptor with support equals zero.
     ordered_support = [np.sort(descriptors[cluster])
                        for cluster in range(nclusters)]
-    diff_score = [np.max(np.diff(ordered_support[cluster]))
+    diff_score = [math.sqrt(np.max(np.diff(ordered_support[cluster])))
                   for cluster in range(nclusters)]
 
     score = pd.DataFrame.from_dict({'S': support_score, 'L': length_score,
