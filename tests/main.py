@@ -18,6 +18,7 @@ class TestSimpleCalculations(unittest.TestCase):
         labels = [0, 0, 0, 1, 1, 1, 1, 2]
 
         score = sledge_score_clusters(X, labels)
+        print(score)
         self.assertEqual(3, len(score))
 
 
