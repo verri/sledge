@@ -229,7 +229,7 @@ def sledge_curve(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;)
     -------
     fractions: array-like of shape (&gt;2,)
         Decreasing rate that element `i` is the fraction of clusters with
-        SLEDge score &gt; `thresholds[i]`.  `fractions[0]` is always `1`.
+        SLEDge score &gt;= `thresholds[i]`.  `fractions[0]` is always `1`.
     thresholds: array-like of shape (&gt;2, )
         Increasing thresholds of the cluster SLEDge score used to compute
         `fractions`.  `thresholds[0]` is always `0` and `thresholds[-1]` is
@@ -361,7 +361,7 @@ All features must be binary.</dd>
 <dl>
 <dt><strong><code>fractions</code></strong> :&ensp;<code>array-like</code> of <code>shape (&gt;2,)</code></dt>
 <dd>Decreasing rate that element <code>i</code> is the fraction of clusters with
-SLEDge score &gt; <code>thresholds[i]</code>.
+SLEDge score &gt;= <code>thresholds[i]</code>.
 <code>fractions[0]</code> is always <code>1</code>.</dd>
 <dt><strong><code>thresholds</code></strong> :&ensp;<code>array-like</code> of <code>shape (&gt;2, )</code></dt>
 <dd>Increasing thresholds of the cluster SLEDge score used to compute
@@ -394,7 +394,7 @@ always <code>1</code>.</dd>
     -------
     fractions: array-like of shape (&gt;2,)
         Decreasing rate that element `i` is the fraction of clusters with
-        SLEDge score &gt; `thresholds[i]`.  `fractions[0]` is always `1`.
+        SLEDge score &gt;= `thresholds[i]`.  `fractions[0]` is always `1`.
     thresholds: array-like of shape (&gt;2, )
         Increasing thresholds of the cluster SLEDge score used to compute
         `fractions`.  `thresholds[0]` is always `0` and `thresholds[-1]` is
