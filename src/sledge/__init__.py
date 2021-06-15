@@ -8,15 +8,28 @@ import math
 import statistics
 
 
-def semantic_descriptors(X, labels, minimum_support=0.0):
+def particularize_descriptors(descriptors, particular_threshold=1.0):
+    for feature in descriptors.columns:
+        column = np.array(descriptors[feature])
+
+        minimum_support = np.min(column)
+        maximum_support = np.max(column)
+
+        toremove = column < minimum_support + particular_threshold * (maximum_support - minimum_support)
+        descriptors.loc[toremove, feature] = 0.0
+
+    return descriptors
+
+
+def semantic_descriptors(X, labels, particular_threshold=None):
     """
     Semantic descriptors based on feature support.
 
     This function computes the support of the present feature (1-itemsets
     composed by the features with value 1) of the samples in each cluster.
 
-    Features in a cluster that do not meet either the *particularization
-    criterion* or the `minimum_support` have their support zeroed.
+    Features in a cluster that do not meet the *particularization criterion*
+    have their support zeroed.
 
     Parameters
     ----------
@@ -24,8 +37,9 @@ def semantic_descriptors(X, labels, minimum_support=0.0):
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
 
     Returns
     -------
@@ -44,26 +58,17 @@ def semantic_descriptors(X, labels, minimum_support=0.0):
     # 1-itemsets, for greater k we need a different algorithm
     support = X.groupby(pd.Series(labels)).apply(np.mean)
 
-    # Particularization
-    for feature in features:
-        column = np.array(support[feature])
+    if particular_threshold is not None:
+        support = particularize_descriptors(support,
+                particular_threshold=particular_threshold)
 
-        max_support = np.array([np.max(np.delete(column, i))
-                               for i in range(n_clusters)])
-        mean_support = np.array([np.mean(np.delete(column, i)) for i in
-                                 range(n_clusters)])
-
-        toremove = column ** 2 < mean_support * max_support
-        support.loc[toremove, feature] = 0.0
-
-    support[support < minimum_support] = 0.0
     return support
 
 
 def sledge_score_clusters(
         X,
         labels,
-        minimum_support=0.0,
+        particular_threshold=None,
         aggregation='harmonic'):
     """
     SLEDge score for each cluster.
@@ -79,8 +84,9 @@ def sledge_score_clusters(
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {'harmonic', 'geometric', 'median', None}
         Strategy to aggregate values of *S*, *L*, *E*, and *D*.
 
@@ -94,7 +100,7 @@ def sledge_score_clusters(
 
     n_clusters = max(labels) + 1
     descriptors = semantic_descriptors(
-        X, labels, minimum_support=minimum_support).transpose()
+        X, labels, particular_threshold=particular_threshold).transpose()
 
     # S: Average support for descriptors (features with particularized support
     # greater than zero)
@@ -151,7 +157,7 @@ def sledge_score_clusters(
     return score
 
 
-def sledge_score(X, labels, minimum_support=0.0, aggregation='harmonic'):
+def sledge_score(X, labels, particular_threshold=None, aggregation='harmonic'):
     """
     SLEDge score.
 
@@ -163,8 +169,9 @@ def sledge_score(X, labels, minimum_support=0.0, aggregation='harmonic'):
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {'harmonic', 'geometric', 'median'}
         Strategy to aggregate values of *S*, *L*, *E*, and *D* for each cluster.
 
@@ -175,11 +182,11 @@ def sledge_score(X, labels, minimum_support=0.0, aggregation='harmonic'):
     """
     assert aggregation is not None
     return np.mean(sledge_score_clusters(X, labels,
-                                         minimum_support=minimum_support,
+                                         particular_threshold=particular_threshold,
                                          aggregation=aggregation))
 
 
-def sledge_curve(X, labels, minimum_support=0.0, aggregation='harmonic'):
+def sledge_curve(X, labels, particular_threshold=0.0, aggregation='harmonic'):
     """
     SLEDge curve.
 
@@ -191,8 +198,9 @@ def sledge_curve(X, labels, minimum_support=0.0, aggregation='harmonic'):
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {'harmonic', 'geometric', 'median', None}
         Strategy to aggregate values of *S*, *L*, *E*, and *D*.
 
@@ -206,7 +214,8 @@ def sledge_curve(X, labels, minimum_support=0.0, aggregation='harmonic'):
         `fractions`.  `thresholds[0]` is always `0` and `thresholds[-1]` is
         always `1`.
     """
-    scores = sledge_score_clusters(X, labels, minimum_support=minimum_support,
+    scores = sledge_score_clusters(X, labels,
+            particular_threshold=particular_threshold,
                                    aggregation=aggregation)
     n_clusters = len(scores)
 

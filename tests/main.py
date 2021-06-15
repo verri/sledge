@@ -34,7 +34,7 @@ class TestSimpleCalculations(unittest.TestCase):
         descriptors = semantic_descriptors(X, labels)
 
         self.assertLess(0, np.max(descriptors.transpose()[0]))
-        self.assertEqual(0, np.max(descriptors.transpose()[1]))
+        self.assertLess(0, np.max(descriptors.transpose()[1]))
 
         score = sledge_score_clusters(X, labels)
         self.assertEqual(0, score[1])
@@ -56,14 +56,14 @@ class TestSimpleCalculations(unittest.TestCase):
         values = score_matrix.to_dict('records')
 
         self.assertLess(0, values[0]['S'])
-        self.assertEqual(1, values[0]['L'])
-        self.assertEqual(1, values[0]['E'])
+        self.assertLess(0, values[0]['L'])
+        self.assertLess(0, values[0]['E'])
         self.assertLess(0, values[0]['D'])
 
-        self.assertEqual(0, values[1]['S'])
-        self.assertEqual(0, values[1]['L'])
-        self.assertEqual(0, values[1]['E'])
-        self.assertEqual(0, values[1]['D'])
+        self.assertLessEqual(0, values[1]['S'])
+        self.assertLessEqual(0, values[1]['L'])
+        self.assertLessEqual(0, values[1]['E'])
+        self.assertLessEqual(0, values[1]['D'])
 
     def test_curve(self):
         X = pd.DataFrame.from_dict({
@@ -81,6 +81,21 @@ class TestSimpleCalculations(unittest.TestCase):
         self.assertEqual(1, thr[-1])
         self.assertEqual(1, frac[1])
 
+    def test_particularization(self):
+        X = pd.DataFrame.from_dict({
+            'A': [1, 0, 1, 0, 0, 0, 0, 0],
+            'B': [1, 0, 0, 0, 0, 0, 0, 1],
+            'C': [1, 1, 1, 1, 1, 1, 0, 0],
+            'D': [0, 0, 0, 1, 0, 1, 1, 0],
+            'E': [0, 0, 0, 1, 1, 0, 1, 0]})
+
+        labels = [0, 0, 0, 1, 1, 1, 1, 2]
+
+        score = sledge_score_clusters(X, labels, aggregation=None, particular_threshold=1)
+        values = score.to_dict('records')
+
+        for i in range(3):
+            self.assertEqual(1, values[i]['E'])
 
 if __name__ == '__main__':
     unittest.main()
