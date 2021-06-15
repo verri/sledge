@@ -15,7 +15,8 @@ def particularize_descriptors(descriptors, particular_threshold=1.0):
         minimum_support = np.min(column)
         maximum_support = np.max(column)
 
-        toremove = column < minimum_support + particular_threshold * (maximum_support - minimum_support)
+        toremove = column < minimum_support + \
+            particular_threshold * (maximum_support - minimum_support)
         descriptors.loc[toremove, feature] = 0.0
 
     return descriptors
@@ -59,8 +60,8 @@ def semantic_descriptors(X, labels, particular_threshold=None):
     support = X.groupby(pd.Series(labels)).apply(np.mean)
 
     if particular_threshold is not None:
-        support = particularize_descriptors(support,
-                particular_threshold=particular_threshold)
+        support = particularize_descriptors(
+            support, particular_threshold=particular_threshold)
 
     return support
 
@@ -181,9 +182,12 @@ def sledge_score(X, labels, particular_threshold=None, aggregation='harmonic'):
         Average SLEDge score.
     """
     assert aggregation is not None
-    return np.mean(sledge_score_clusters(X, labels,
-                                         particular_threshold=particular_threshold,
-                                         aggregation=aggregation))
+    return np.mean(
+        sledge_score_clusters(
+            X,
+            labels,
+            particular_threshold=particular_threshold,
+            aggregation=aggregation))
 
 
 def sledge_curve(X, labels, particular_threshold=0.0, aggregation='harmonic'):
@@ -215,7 +219,7 @@ def sledge_curve(X, labels, particular_threshold=0.0, aggregation='harmonic'):
         always `1`.
     """
     scores = sledge_score_clusters(X, labels,
-            particular_threshold=particular_threshold,
+                                   particular_threshold=particular_threshold,
                                    aggregation=aggregation)
     n_clusters = len(scores)
 

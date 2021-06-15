@@ -91,11 +91,13 @@ class TestSimpleCalculations(unittest.TestCase):
 
         labels = [0, 0, 0, 1, 1, 1, 1, 2]
 
-        score = sledge_score_clusters(X, labels, aggregation=None, particular_threshold=1)
+        score = sledge_score_clusters(
+            X, labels, aggregation=None, particular_threshold=1)
         values = score.to_dict('records')
 
         for i in range(3):
             self.assertEqual(1, values[i]['E'])
+
 
 if __name__ == '__main__':
     unittest.main()
