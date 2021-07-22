@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.9.2" />
 <title>sledge API documentation</title>
-<meta name="description" content="Python package `sledge`: semantic evaluation of clustering results." />
+<meta name="description" content="Python package `sledge`: semantic evaluation of clustering results …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -23,12 +23,29 @@
 </header>
 <section id="section-intro">
 <p>Python package <code><a title="sledge" href="#sledge">sledge</a></code>: semantic evaluation of clustering results.</p>
+<p>The package performs an evaluation of clustering results through
+the semantic relationship between the significant frequent patterns
+identified among the cluster items.</p>
+<p>The method uses an internal validation technique to evaluate
+the cluster rather than using distance-related metrics.
+However, the algorithm requires that the data be organized in CATEGORICAL FORM.</p>
+<p>Questions and information contact us: <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#97;&#113;&#117;&#105;&#110;&#111;&#114;&#100;&#103;&#97;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#97;&#113;&#117;&#105;&#110;&#111;&#114;&#100;&#103;&#97;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a></p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 Python package `sledge`: semantic evaluation of clustering results.
+
+The package performs an evaluation of clustering results through
+the semantic relationship between the significant frequent patterns
+identified among the cluster items.
+
+The method uses an internal validation technique to evaluate
+the cluster rather than using distance-related metrics.
+However, the algorithm requires that the data be organized in CATEGORICAL FORM.
+
+Questions and information contact us: &lt;aquinordga@gmail.com&gt;
 &#34;&#34;&#34;
 
 import pandas as pd
@@ -37,15 +54,53 @@ import math
 import statistics
 
 
-def semantic_descriptors(X, labels, minimum_support=0.0):
+def particularize_descriptors(descriptors, particular_threshold=1.0):
+    &#34;&#34;&#34;
+    Particularization of descriptors based on support.
+
+    This function particularizes descriptors using a threshold applied
+    on the carrier (support maximum - support minimum) of the feature in the
+    clusters.
+
+    Parameters
+    ----------
+    particular_threshold: float
+        Particularization threshold.  Given the relative support,
+        0.0 means that the entire range of relative support will be used,
+        while 0.5 will be used half, and 1.0 only maximum support is kept.
+
+    descriptors: array-like of shape (n_clusters, n_features)
+        Matrix with the support of features in each cluster.
+
+    Returns
+    -------
+    descriptors: array-like of shape (n_clusters, n_features)
+        Matrix with the computed particularized support of features in each
+        cluster.
+    &#34;&#34;&#34;
+
+    for feature in descriptors.columns:
+        column = np.array(descriptors[feature])
+
+        minimum_support = np.min(column)
+        maximum_support = np.max(column)
+
+        toremove = column &lt; minimum_support + \
+            particular_threshold * (maximum_support - minimum_support)
+        descriptors.loc[toremove, feature] = 0.0
+
+    return descriptors
+
+
+def semantic_descriptors(X, labels, particular_threshold=None):
     &#34;&#34;&#34;
     Semantic descriptors based on feature support.
 
     This function computes the support of the present feature (1-itemsets
     composed by the features with value 1) of the samples in each cluster.
 
-    Features in a cluster that do not meet either the *particularization
-    criterion* or the `minimum_support` have their support zeroed.
+    Features in a cluster that do not meet the *particularization criterion*
+    have their support zeroed.
 
     Parameters
     ----------
@@ -53,8 +108,9 @@ def semantic_descriptors(X, labels, minimum_support=0.0):
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
 
     Returns
     -------
@@ -73,26 +129,17 @@ def semantic_descriptors(X, labels, minimum_support=0.0):
     # 1-itemsets, for greater k we need a different algorithm
     support = X.groupby(pd.Series(labels)).apply(np.mean)
 
-    # Particularization
-    for feature in features:
-        column = np.array(support[feature])
+    if particular_threshold is not None:
+        support = particularize_descriptors(
+            support, particular_threshold=particular_threshold)
 
-        max_support = np.array([np.max(np.delete(column, i))
-                               for i in range(n_clusters)])
-        mean_support = np.array([np.mean(np.delete(column, i)) for i in
-                                 range(n_clusters)])
-
-        toremove = column ** 2 &lt; mean_support * max_support
-        support.loc[toremove, feature] = 0.0
-
-    support[support &lt; minimum_support] = 0.0
     return support
 
 
 def sledge_score_clusters(
         X,
         labels,
-        minimum_support=0.0,
+        particular_threshold=None,
         aggregation=&#39;harmonic&#39;):
     &#34;&#34;&#34;
     SLEDge score for each cluster.
@@ -108,8 +155,9 @@ def sledge_score_clusters(
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {&#39;harmonic&#39;, &#39;geometric&#39;, &#39;median&#39;, None}
         Strategy to aggregate values of *S*, *L*, *E*, and *D*.
 
@@ -123,7 +171,7 @@ def sledge_score_clusters(
 
     n_clusters = max(labels) + 1
     descriptors = semantic_descriptors(
-        X, labels, minimum_support=minimum_support).transpose()
+        X, labels, particular_threshold=particular_threshold).transpose()
 
     # S: Average support for descriptors (features with particularized support
     # greater than zero)
@@ -135,9 +183,7 @@ def sledge_score_clusters(
     # L: Description set size deviation
     descriptor_set_size = np.array([np.count_nonzero(descriptors[cluster]) for
                                    cluster in range(n_clusters)])
-    # XXX: I am ignoring the clusters that have zero descriptors in the average
-    # and considering length score equals zero if the cluster has no
-    # descriptors
+
     average_set_size = np.mean(descriptor_set_size[descriptor_set_size &gt; 0])
     length_score = [0 if set_size == 0 else 1.0 /
                     (1.0 +
@@ -158,8 +204,6 @@ def sledge_score_clusters(
         exclusive_sets[cluster]) / len(descriptor_sets[cluster]) for cluster in range(n_clusters)]
 
     # D: Maximum ordered support difference
-    # XXX: I implemented a little bit different from the paper. I always
-    # consider that there is a _dummy_ descriptor with support equals zero.
     ordered_support = [np.sort(descriptors[cluster])
                        for cluster in range(n_clusters)]
     diff_score = [math.sqrt(np.max(np.diff(ordered_support[cluster])))
@@ -180,7 +224,7 @@ def sledge_score_clusters(
     return score
 
 
-def sledge_score(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;):
+def sledge_score(X, labels, particular_threshold=None, aggregation=&#39;harmonic&#39;):
     &#34;&#34;&#34;
     SLEDge score.
 
@@ -192,8 +236,9 @@ def sledge_score(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;)
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {&#39;harmonic&#39;, &#39;geometric&#39;, &#39;median&#39;}
         Strategy to aggregate values of *S*, *L*, *E*, and *D* for each cluster.
 
@@ -203,12 +248,15 @@ def sledge_score(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;)
         Average SLEDge score.
     &#34;&#34;&#34;
     assert aggregation is not None
-    return np.mean(sledge_score_clusters(X, labels,
-                                         minimum_support=minimum_support,
-                                         aggregation=aggregation))
+    return np.mean(
+        sledge_score_clusters(
+            X,
+            labels,
+            particular_threshold=particular_threshold,
+            aggregation=aggregation))
 
 
-def sledge_curve(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;):
+def sledge_curve(X, labels, particular_threshold=0.0, aggregation=&#39;harmonic&#39;):
     &#34;&#34;&#34;
     SLEDge curve.
 
@@ -220,8 +268,9 @@ def sledge_curve(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;)
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {&#39;harmonic&#39;, &#39;geometric&#39;, &#39;median&#39;, None}
         Strategy to aggregate values of *S*, *L*, *E*, and *D*.
 
@@ -235,7 +284,8 @@ def sledge_curve(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;)
         `fractions`.  `thresholds[0]` is always `0` and `thresholds[-1]` is
         always `1`.
     &#34;&#34;&#34;
-    scores = sledge_score_clusters(X, labels, minimum_support=minimum_support,
+    scores = sledge_score_clusters(X, labels,
+                                   particular_threshold=particular_threshold,
                                    aggregation=aggregation)
     n_clusters = len(scores)
 
@@ -258,24 +308,23 @@ def sledge_curve(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;)
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="sledge.semantic_descriptors"><code class="name flex">
-<span>def <span class="ident">semantic_descriptors</span></span>(<span>X, labels, minimum_support=0.0)</span>
+<dt id="sledge.particularize_descriptors"><code class="name flex">
+<span>def <span class="ident">particularize_descriptors</span></span>(<span>descriptors, particular_threshold=1.0)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Semantic descriptors based on feature support.</p>
-<p>This function computes the support of the present feature (1-itemsets
-composed by the features with value 1) of the samples in each cluster.</p>
-<p>Features in a cluster that do not meet either the <em>particularization
-criterion</em> or the <code>minimum_support</code> have their support zeroed.</p>
+<div class="desc"><p>Particularization of descriptors based on support.</p>
+<p>This function particularizes descriptors using a threshold applied
+on the carrier (support maximum - support minimum) of the feature in the
+clusters.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
-<dt><strong><code>X</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_samples, n_features)</code></dt>
-<dd>Feature array of each sample.
-All features must be binary.</dd>
-<dt><strong><code>labels</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_samples,)</code></dt>
-<dd>Cluster labels for each sample starting in 0.</dd>
-<dt><strong><code>minimum_support</code></strong> :&ensp;<code>float</code></dt>
-<dd>Minimum support threshold.</dd>
+<dt><strong><code>particular_threshold</code></strong> :&ensp;<code>float</code></dt>
+<dd>Particularization threshold.
+Given the relative support,
+0.0 means that the entire range of relative support will be used,
+while 0.5 will be used half, and 1.0 only maximum support is kept.</dd>
+<dt><strong><code>descriptors</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_clusters, n_features)</code></dt>
+<dd>Matrix with the support of features in each cluster.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -287,15 +336,84 @@ cluster.</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def semantic_descriptors(X, labels, minimum_support=0.0):
+<pre><code class="python">def particularize_descriptors(descriptors, particular_threshold=1.0):
+    &#34;&#34;&#34;
+    Particularization of descriptors based on support.
+
+    This function particularizes descriptors using a threshold applied
+    on the carrier (support maximum - support minimum) of the feature in the
+    clusters.
+
+    Parameters
+    ----------
+    particular_threshold: float
+        Particularization threshold.  Given the relative support,
+        0.0 means that the entire range of relative support will be used,
+        while 0.5 will be used half, and 1.0 only maximum support is kept.
+
+    descriptors: array-like of shape (n_clusters, n_features)
+        Matrix with the support of features in each cluster.
+
+    Returns
+    -------
+    descriptors: array-like of shape (n_clusters, n_features)
+        Matrix with the computed particularized support of features in each
+        cluster.
+    &#34;&#34;&#34;
+
+    for feature in descriptors.columns:
+        column = np.array(descriptors[feature])
+
+        minimum_support = np.min(column)
+        maximum_support = np.max(column)
+
+        toremove = column &lt; minimum_support + \
+            particular_threshold * (maximum_support - minimum_support)
+        descriptors.loc[toremove, feature] = 0.0
+
+    return descriptors</code></pre>
+</details>
+</dd>
+<dt id="sledge.semantic_descriptors"><code class="name flex">
+<span>def <span class="ident">semantic_descriptors</span></span>(<span>X, labels, particular_threshold=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Semantic descriptors based on feature support.</p>
+<p>This function computes the support of the present feature (1-itemsets
+composed by the features with value 1) of the samples in each cluster.</p>
+<p>Features in a cluster that do not meet the <em>particularization criterion</em>
+have their support zeroed.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>X</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_samples, n_features)</code></dt>
+<dd>Feature array of each sample.
+All features must be binary.</dd>
+<dt><strong><code>labels</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_samples,)</code></dt>
+<dd>Cluster labels for each sample starting in 0.</dd>
+<dt><strong><code>particular_threshold</code></strong> :&ensp;<code>{None, float}</code></dt>
+<dd>Particularization threshold.
+<code>None</code> means no particularization
+strategy.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>descriptors</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_clusters, n_features)</code></dt>
+<dd>Matrix with the computed particularized support of features in each
+cluster.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def semantic_descriptors(X, labels, particular_threshold=None):
     &#34;&#34;&#34;
     Semantic descriptors based on feature support.
 
     This function computes the support of the present feature (1-itemsets
     composed by the features with value 1) of the samples in each cluster.
 
-    Features in a cluster that do not meet either the *particularization
-    criterion* or the `minimum_support` have their support zeroed.
+    Features in a cluster that do not meet the *particularization criterion*
+    have their support zeroed.
 
     Parameters
     ----------
@@ -303,8 +421,9 @@ cluster.</dd>
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
 
     Returns
     -------
@@ -323,24 +442,15 @@ cluster.</dd>
     # 1-itemsets, for greater k we need a different algorithm
     support = X.groupby(pd.Series(labels)).apply(np.mean)
 
-    # Particularization
-    for feature in features:
-        column = np.array(support[feature])
+    if particular_threshold is not None:
+        support = particularize_descriptors(
+            support, particular_threshold=particular_threshold)
 
-        max_support = np.array([np.max(np.delete(column, i))
-                               for i in range(n_clusters)])
-        mean_support = np.array([np.mean(np.delete(column, i)) for i in
-                                 range(n_clusters)])
-
-        toremove = column ** 2 &lt; mean_support * max_support
-        support.loc[toremove, feature] = 0.0
-
-    support[support &lt; minimum_support] = 0.0
     return support</code></pre>
 </details>
 </dd>
 <dt id="sledge.sledge_curve"><code class="name flex">
-<span>def <span class="ident">sledge_curve</span></span>(<span>X, labels, minimum_support=0.0, aggregation='harmonic')</span>
+<span>def <span class="ident">sledge_curve</span></span>(<span>X, labels, particular_threshold=0.0, aggregation='harmonic')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>SLEDge curve.</p>
@@ -352,8 +462,10 @@ cluster.</dd>
 All features must be binary.</dd>
 <dt><strong><code>labels</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_samples,)</code></dt>
 <dd>Cluster labels for each sample starting in 0.</dd>
-<dt><strong><code>minimum_support</code></strong> :&ensp;<code>float</code></dt>
-<dd>Minimum support threshold.</dd>
+<dt><strong><code>particular_threshold</code></strong> :&ensp;<code>{None, float}</code></dt>
+<dd>Particularization threshold.
+<code>None</code> means no particularization
+strategy.</dd>
 <dt><strong><code>aggregation</code></strong> :&ensp;<code>{'harmonic', 'geometric', 'median', None}</code></dt>
 <dd>Strategy to aggregate values of <em>S</em>, <em>L</em>, <em>E</em>, and <em>D</em>.</dd>
 </dl>
@@ -373,7 +485,7 @@ always <code>1</code>.</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def sledge_curve(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;):
+<pre><code class="python">def sledge_curve(X, labels, particular_threshold=0.0, aggregation=&#39;harmonic&#39;):
     &#34;&#34;&#34;
     SLEDge curve.
 
@@ -385,8 +497,9 @@ always <code>1</code>.</dd>
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {&#39;harmonic&#39;, &#39;geometric&#39;, &#39;median&#39;, None}
         Strategy to aggregate values of *S*, *L*, *E*, and *D*.
 
@@ -400,7 +513,8 @@ always <code>1</code>.</dd>
         `fractions`.  `thresholds[0]` is always `0` and `thresholds[-1]` is
         always `1`.
     &#34;&#34;&#34;
-    scores = sledge_score_clusters(X, labels, minimum_support=minimum_support,
+    scores = sledge_score_clusters(X, labels,
+                                   particular_threshold=particular_threshold,
                                    aggregation=aggregation)
     n_clusters = len(scores)
 
@@ -417,7 +531,7 @@ always <code>1</code>.</dd>
 </details>
 </dd>
 <dt id="sledge.sledge_score"><code class="name flex">
-<span>def <span class="ident">sledge_score</span></span>(<span>X, labels, minimum_support=0.0, aggregation='harmonic')</span>
+<span>def <span class="ident">sledge_score</span></span>(<span>X, labels, particular_threshold=None, aggregation='harmonic')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>SLEDge score.</p>
@@ -429,8 +543,10 @@ always <code>1</code>.</dd>
 All features must be binary.</dd>
 <dt><strong><code>labels</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_samples,)</code></dt>
 <dd>Cluster labels for each sample starting in 0.</dd>
-<dt><strong><code>minimum_support</code></strong> :&ensp;<code>float</code></dt>
-<dd>Minimum support threshold.</dd>
+<dt><strong><code>particular_threshold</code></strong> :&ensp;<code>{None, float}</code></dt>
+<dd>Particularization threshold.
+<code>None</code> means no particularization
+strategy.</dd>
 <dt><strong><code>aggregation</code></strong> :&ensp;<code>{'harmonic', 'geometric', 'median'}</code></dt>
 <dd>Strategy to aggregate values of <em>S</em>, <em>L</em>, <em>E</em>, and <em>D</em> for each cluster.</dd>
 </dl>
@@ -443,7 +559,7 @@ All features must be binary.</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def sledge_score(X, labels, minimum_support=0.0, aggregation=&#39;harmonic&#39;):
+<pre><code class="python">def sledge_score(X, labels, particular_threshold=None, aggregation=&#39;harmonic&#39;):
     &#34;&#34;&#34;
     SLEDge score.
 
@@ -455,8 +571,9 @@ All features must be binary.</dd>
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {&#39;harmonic&#39;, &#39;geometric&#39;, &#39;median&#39;}
         Strategy to aggregate values of *S*, *L*, *E*, and *D* for each cluster.
 
@@ -466,13 +583,16 @@ All features must be binary.</dd>
         Average SLEDge score.
     &#34;&#34;&#34;
     assert aggregation is not None
-    return np.mean(sledge_score_clusters(X, labels,
-                                         minimum_support=minimum_support,
-                                         aggregation=aggregation))</code></pre>
+    return np.mean(
+        sledge_score_clusters(
+            X,
+            labels,
+            particular_threshold=particular_threshold,
+            aggregation=aggregation))</code></pre>
 </details>
 </dd>
 <dt id="sledge.sledge_score_clusters"><code class="name flex">
-<span>def <span class="ident">sledge_score_clusters</span></span>(<span>X, labels, minimum_support=0.0, aggregation='harmonic')</span>
+<span>def <span class="ident">sledge_score_clusters</span></span>(<span>X, labels, particular_threshold=None, aggregation='harmonic')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>SLEDge score for each cluster.</p>
@@ -486,8 +606,10 @@ All features must be binary.</dd>
 All features must be binary.</dd>
 <dt><strong><code>labels</code></strong> :&ensp;<code>array-like</code> of <code>shape (n_samples,)</code></dt>
 <dd>Cluster labels for each sample starting in 0.</dd>
-<dt><strong><code>minimum_support</code></strong> :&ensp;<code>float</code></dt>
-<dd>Minimum support threshold.</dd>
+<dt><strong><code>particular_threshold</code></strong> :&ensp;<code>{None, float}</code></dt>
+<dd>Particularization threshold.
+<code>None</code> means no particularization
+strategy.</dd>
 <dt><strong><code>aggregation</code></strong> :&ensp;<code>{'harmonic', 'geometric', 'median', None}</code></dt>
 <dd>Strategy to aggregate values of <em>S</em>, <em>L</em>, <em>E</em>, and <em>D</em>.</dd>
 </dl>
@@ -505,7 +627,7 @@ All features must be binary.</dd>
 <pre><code class="python">def sledge_score_clusters(
         X,
         labels,
-        minimum_support=0.0,
+        particular_threshold=None,
         aggregation=&#39;harmonic&#39;):
     &#34;&#34;&#34;
     SLEDge score for each cluster.
@@ -521,8 +643,9 @@ All features must be binary.</dd>
         Feature array of each sample.  All features must be binary.
     labels: array-like of shape (n_samples,)
         Cluster labels for each sample starting in 0.
-    minimum_support: float
-        Minimum support threshold.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
     aggregation: {&#39;harmonic&#39;, &#39;geometric&#39;, &#39;median&#39;, None}
         Strategy to aggregate values of *S*, *L*, *E*, and *D*.
 
@@ -536,7 +659,7 @@ All features must be binary.</dd>
 
     n_clusters = max(labels) + 1
     descriptors = semantic_descriptors(
-        X, labels, minimum_support=minimum_support).transpose()
+        X, labels, particular_threshold=particular_threshold).transpose()
 
     # S: Average support for descriptors (features with particularized support
     # greater than zero)
@@ -548,9 +671,7 @@ All features must be binary.</dd>
     # L: Description set size deviation
     descriptor_set_size = np.array([np.count_nonzero(descriptors[cluster]) for
                                    cluster in range(n_clusters)])
-    # XXX: I am ignoring the clusters that have zero descriptors in the average
-    # and considering length score equals zero if the cluster has no
-    # descriptors
+
     average_set_size = np.mean(descriptor_set_size[descriptor_set_size &gt; 0])
     length_score = [0 if set_size == 0 else 1.0 /
                     (1.0 +
@@ -571,8 +692,6 @@ All features must be binary.</dd>
         exclusive_sets[cluster]) / len(descriptor_sets[cluster]) for cluster in range(n_clusters)]
 
     # D: Maximum ordered support difference
-    # XXX: I implemented a little bit different from the paper. I always
-    # consider that there is a _dummy_ descriptor with support equals zero.
     ordered_support = [np.sort(descriptors[cluster])
                        for cluster in range(n_clusters)]
     diff_score = [math.sqrt(np.max(np.diff(ordered_support[cluster])))
@@ -606,6 +725,7 @@ All features must be binary.</dd>
 <ul id="index">
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="sledge.particularize_descriptors" href="#sledge.particularize_descriptors">particularize_descriptors</a></code></li>
 <li><code><a title="sledge.semantic_descriptors" href="#sledge.semantic_descriptors">semantic_descriptors</a></code></li>
 <li><code><a title="sledge.sledge_curve" href="#sledge.sledge_curve">sledge_curve</a></code></li>
 <li><code><a title="sledge.sledge_score" href="#sledge.sledge_score">sledge_score</a></code></li>
