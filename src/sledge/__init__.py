@@ -1,5 +1,7 @@
 """
 Python package `sledge`: semantic evaluation of clustering results.
+
+TODO...
 """
 
 import pandas as pd
@@ -9,6 +11,9 @@ import statistics
 
 
 def particularize_descriptors(descriptors, particular_threshold=1.0):
+    """
+    TODO...
+    """
     for feature in descriptors.columns:
         column = np.array(descriptors[feature])
 
@@ -113,9 +118,7 @@ def sledge_score_clusters(
     # L: Description set size deviation
     descriptor_set_size = np.array([np.count_nonzero(descriptors[cluster]) for
                                    cluster in range(n_clusters)])
-    # XXX: I am ignoring the clusters that have zero descriptors in the average
-    # and considering length score equals zero if the cluster has no
-    # descriptors
+
     average_set_size = np.mean(descriptor_set_size[descriptor_set_size > 0])
     length_score = [0 if set_size == 0 else 1.0 /
                     (1.0 +
@@ -136,8 +139,6 @@ def sledge_score_clusters(
         exclusive_sets[cluster]) / len(descriptor_sets[cluster]) for cluster in range(n_clusters)]
 
     # D: Maximum ordered support difference
-    # XXX: I implemented a little bit different from the paper. I always
-    # consider that there is a _dummy_ descriptor with support equals zero.
     ordered_support = [np.sort(descriptors[cluster])
                        for cluster in range(n_clusters)]
     diff_score = [math.sqrt(np.max(np.diff(ordered_support[cluster])))
