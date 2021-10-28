@@ -7,6 +7,23 @@ from sledge import sledge_score_clusters, semantic_descriptors, sledge_curve
 
 class TestSimpleCalculations(unittest.TestCase):
 
+    def test_singleton(self):
+        X = pd.DataFrame.from_dict({
+            'A': [1, 0, 1, 0, 0, 0, 0, 0],
+            'B': [1, 0, 0, 0, 0, 0, 0, 1],
+            'C': [1, 1, 1, 1, 1, 1, 0, 0],
+            'D': [0, 0, 0, 1, 0, 1, 1, 0],
+            'E': [0, 0, 0, 1, 1, 0, 1, 0]})
+
+        labels = [0, 0, 0, 0, 0, 0, 1, 0]
+
+        descriptors = semantic_descriptors(X, labels)
+        self.assertEqual(2, descriptors.shape[0])
+        self.assertEqual(5, descriptors.shape[1])
+
+        score = sledge_score_clusters(X, labels)
+        self.assertEqual(2, len(score))
+
     def test_basic(self):
         X = pd.DataFrame.from_dict({
             'A': [1, 0, 1, 0, 0, 0, 0, 0],
