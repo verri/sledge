@@ -91,7 +91,7 @@ def semantic_descriptors(X, labels, particular_threshold=None):
     features = X.columns
 
     # 1-itemsets, for greater k we need a different algorithm
-    support = X.groupby(labels).apply(np.mean)
+    support = X.groupby(labels).mean()
 
     if particular_threshold is not None:
         support = particularize_descriptors(
