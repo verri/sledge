@@ -56,13 +56,16 @@ def particularize_descriptors(descriptors, particular_threshold=1.0):
     return descriptors
 
 
-def semantic_descriptors(X, labels, particular_threshold=None, report_form=False):
+def semantic_descriptors(X, labels, particular_threshold=None):
     """
     Semantic descriptors based on feature support.
+
     This function computes the support of the present feature (1-itemsets
     composed by the features with value 1) of the samples in each cluster.
+
     Features in a cluster that do not meet the *particularization criterion*
     have their support zeroed.
+
     Parameters
     ----------
     X: array-like of shape (n_samples, n_features)
@@ -72,6 +75,7 @@ def semantic_descriptors(X, labels, particular_threshold=None, report_form=False
     particular_threshold: {None, float}
         Particularization threshold.  `None` means no particularization
         strategy.
+
     Returns
     -------
     descriptors: array-like of shape (n_clusters, n_features)
@@ -92,14 +96,8 @@ def semantic_descriptors(X, labels, particular_threshold=None, report_form=False
     if particular_threshold is not None:
         support = particularize_descriptors(
             support, particular_threshold=particular_threshold)
-        
-    if report_form is True:
-        report = dict()
-        for i in range(n_clusters):    
-            report[i] = support.loc[i][support.loc[i] > 0].sort_values(ascending=False)
-        return report
-    else:
-        return support
+
+    return support
 
 
 def sledge_score_clusters(
