@@ -269,11 +269,6 @@ def sledge_curve(X, labels, particular_threshold=0.0, aggregation='harmonic'):
 
     return fractions, thresholds
 
-import pandas as pd
-import numpy as np
-import warnings
-warnings.filterwarnings("ignore", category=RuntimeWarning)
-
 def calc_score(clusters, support):
     descriptors = [ cluster.mean(axis=0) > support for cluster in clusters ]
     exclusive_counts = []
@@ -292,7 +287,7 @@ def cds_clustering(X, K, support=0.8):
         biggest_id = np.argmax([ x.shape[0] for x in clusters ])#[0]
         biggest = clusters[biggest_id]
 
-        for attr in range(Xinput.shape[1]):
+        for attr in range(X.shape[1]):
             c1, c2 = biggest[biggest[attr] == 0].copy(), biggest[biggest[attr] == 1].copy()
             new_clusters = [ clusters[i] for i in range(len(clusters)) if i != biggest_id ] + [c1, c2]
             score.append(calc_score(new_clusters, support))
