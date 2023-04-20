@@ -269,46 +269,64 @@ def sledge_curve(X, labels, particular_threshold=0.0, aggregation='harmonic'):
 
     return fractions, thresholds
 
-def e_clustering(X, K=9, support=0.8):
-    
-    def calc_score(clusters, support):
-        descriptors = [ cluster.mean(axis=0) > support for cluster in clusters ]
-        exclusive_counts = []
-        for c in range(len(clusters)):
-            others = np.logical_or.reduce([ descriptors[k] for k in range(len(clusters)) if k != c ])
-            #print("others", others)
-            exclusive_count = np.logical_and(descriptors[c], np.logical_not(others)).sum()
-            #print(c, exclusive_count)
-            exclusive_counts.append(exclusive_count)
-            #print('E:', np.mean(exclusive_counts))
-        return np.mean(exclusive_counts)
+import pandas as pd
+import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-    clusters = [X]
-    result = []
-    while len(result) < K:
-        #print('\n####################################\n')
-        #print('len(result):', len(result))
+def calc_score(clusters, support):
+    descriptors = [ cluster.mean(axis=0) > support for cluster in clusters ]
+    exclusive_counts = []
+    for c in range(len(clusters)):
+        others = np.logical_or.reduce([ descriptors[k] for k in range(len(clusters)) if k != c ])
+        exclusive_count = np.logical_and(descriptors[c], np.logical_not(others)).sum()
+        exclusive_counts.append(exclusive_count)
+    return np.mean(exclusive_counts)
+
+def cds_clustering(X, K, support=0.8):
+    clusters = [pd.DataFrame(X)]
+
+    for k in range(K-1):
         score = []
 
-        #print('[ x.shape[0] for x in clusters ]:', [ x.shape[0] for x in clusters ])
         biggest_id = np.argmax([ x.shape[0] for x in clusters ])#[0]
-        #print('biggest_id:', biggest_id)
         biggest = clusters[biggest_id]
-        #print('biggest:\n',biggest)
-        #print('\n####################################\n')
+
+        for attr in range(Xinput.shape[1]):
+            c1, c2 = biggest[biggest[attr] == 0].copy(), biggest[biggest[attr] == 1].copy()
+            new_clusters = [ clusters[i] for i in range(len(clusters)) if i != biggest_id ] + [c1, c2]
+            score.append(calc_score(new_clusters, support))
+
+
+        best_attr = np.argmax(score)
+        c1, c2 = biggest[biggest[best_attr] == 0].copy(), biggest[biggest[best_attr] == 1].copy()
+        new_clusters = [ clusters[i] for i in range(len(clusters)) if i != biggest_id ] + [c1, c2]
+        new_descriptors = [ np.where(cluster.mean(axis=0) > 0.8)[0] for cluster in new_clusters ]
+        
+        clusters = new_clusters
+
+    labels = np.empty(X.shape[0])
+    
+    for i in range(len(new_clusters)):
+        idx = new_clusters[i].index.values.tolist()
+        for j in idx:
+            labels[j] = i
+    
+    return labels
+    
+def cds_report(X, K=9, support=0.8):
+    clusters = [X]
+    result = []
+    
+    while len(result) < K:
+        score = []
+        biggest_id = np.argmax([ x.shape[0] for x in clusters ])#[0]
+        biggest = clusters[biggest_id]
+
         for attr in range(X.shape[1]):
             c1, c2 = biggest[biggest[:, attr] == 0, :].copy(), biggest[biggest[:, attr] == 1, :].copy()
-            #print('c1.shape, c2.shape:', c1.shape[0], c2.shape[0])
-            #print('c1:\n', c1)
-            #print('c2:\n', c2)
             new_clusters = [ clusters[i] for i in range(len(clusters)) if i != biggest_id ] + [c1, c2]
-            #print('new_clusters:\n', new_clusters)
             score.append(calc_score(new_clusters, support))
-            #print('\n>>>> SCORE:', calc_score(new_clusters))
-
-            #print('---------------------')
-
-        #print(score)
 
         best_attr = np.argmax(score)
         c1, c2 = biggest[biggest[:, best_attr] == 0, :].copy(), biggest[biggest[:, best_attr] == 1, :].copy()
@@ -323,7 +341,7 @@ def e_clustering(X, K=9, support=0.8):
         })
 
         clusters = new_clusters
-        #print('>>>>>> CLUSTERS:\n', clusters)
+        
     result = pd.DataFrame(result)
     tilde_k = result.loc[result.score.idxmax()].k
     return tilde_k, result
