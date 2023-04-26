@@ -307,7 +307,7 @@ def cds_clustering(X, K, support=0.8):
         for j in idx:
             labels[j] = i
     
-    return labels
+    return labels, new_descriptors
     
 def cds_report(X, K=9, support=0.8):
     clusters = [X]
