@@ -268,6 +268,8 @@ def sledge_curve(X, labels, particular_threshold=0.0, aggregation='harmonic'):
         [np.count_nonzero(scores >= thr) / n_clusters for thr in thresholds])
 
     return fractions, thresholds
+    
+##### CDR Clustering #####
 
 def calc_score(clusters, support):
     descriptors = [ cluster.mean(axis=0) > support for cluster in clusters ]
@@ -340,3 +342,137 @@ def cds_report(X, K=9, support=0.8):
     result = pd.DataFrame(result)
     tilde_k = result.loc[result.score.idxmax()].k
     return tilde_k, result
+    
+##### Weighted SLEDge #####
+
+def w_sledge_score_clusters(
+        X,
+        labels,
+        W=[.3, .1, .5, .1],
+        particular_threshold=None,
+        aggregation='median'):
+    """
+    SLEDge score for each cluster.
+
+    This function computes the SLEDge score of each cluster.
+
+    If `aggregation` is `None`, returns a matrix with values *S*, *L*, *E*, and
+    *D* for each cluster.
+
+    Parameters
+    ----------
+    X: array-like of shape (n_samples, n_features)
+        Feature array of each sample.  All features must be binary.
+    labels: array-like of shape (n_samples,)
+        Cluster labels for each sample starting in 0.
+    W: array-like of shape 4
+        Referring to indicators S, L, E, D, respectively.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
+    aggregation: {'harmonic', 'geometric', 'median', None}
+        Strategy to aggregate values of *S*, *L*, *E*, and *D*.
+
+    Returns
+    -------
+    scores: array-like of shape (n_clusters,)
+        SLEDge score for each cluster.
+    score_matrix: array-like of shape (n_clusters, 4) if `aggregation` is None
+        S,L,E,D score for each cluster.
+    """
+
+    n_clusters = max(labels) + 1
+    descriptors = semantic_descriptors(
+        X, labels, particular_threshold=particular_threshold).transpose()
+
+    # S: Average support for descriptors (features with particularized support
+    # greater than zero)
+    def mean_gt_zero(x): return 0 if np.count_nonzero(
+        x) == 0 else np.mean(x[x > 0])
+    support_score = [mean_gt_zero(descriptors[cluster])
+                     for cluster in range(n_clusters)]
+
+    # L: Description set size deviation
+    descriptor_set_size = np.array([np.count_nonzero(descriptors[cluster]) for
+                                   cluster in range(n_clusters)])
+
+    average_set_size = np.mean(descriptor_set_size[descriptor_set_size > 0])
+    length_score = [0 if set_size == 0 else 1.0 /
+                    (1.0 +
+                     abs(set_size -
+                         average_set_size)) for set_size in descriptor_set_size]
+
+    # E: Exclusivity
+    descriptor_sets = np.array([frozenset(
+        descriptors.index[descriptors[cluster] > 0]) for cluster in range(n_clusters)])
+    exclusive_sets = [
+        descriptor_sets[cluster].difference(
+            frozenset.union(
+                *
+                np.delete(
+                    descriptor_sets,
+                    cluster))) for cluster in range(n_clusters)]
+    exclusive_score = [0 if len(descriptor_sets[cluster]) == 0 else len(
+        exclusive_sets[cluster]) / len(descriptor_sets[cluster]) for cluster in range(n_clusters)]
+
+    # D: Maximum ordered support difference
+    ordered_support = [np.sort(descriptors[cluster])
+                       for cluster in range(n_clusters)]
+    diff_score = [math.sqrt(np.max(np.diff(ordered_support[cluster])))
+                  for cluster in range(n_clusters)]
+        
+    score = pd.DataFrame.from_dict({'S': [W[0] * s for s in support_score],
+                                    'L': [W[1] * l for l in length_score],
+                                    'E': [W[2] * e for e in exclusive_score],
+                                    'D': [W[3] * d for d in diff_score]})
+
+    if aggregation == 'harmonic':
+        score = score.transpose().apply(statistics.harmonic_mean)
+    elif aggregation == 'geometric':
+        score = score.transpose().apply(statistics.geometric_mean)
+    elif aggregation == 'median':
+        score = score.transpose().apply(statistics.median)
+    else:
+        assert aggregation is None
+
+    return score
+
+
+def w_sledge_score(
+        X,
+        labels,
+        W=[.3, .1, .5, .1],
+        particular_threshold=None,
+        aggregation='median'):
+    """
+    SLEDge score.
+
+    This function computes the average SLEDge score of all clusters.
+
+    Parameters
+    ----------
+    X: array-like of shape (n_samples, n_features)
+        Feature array of each sample.  All features must be binary.
+    labels: array-like of shape (n_samples,)
+        Cluster labels for each sample starting in 0.    
+    W: array-like of shape 4
+        Referring to indicators S, L, E, D, respectively.
+    particular_threshold: {None, float}
+        Particularization threshold.  `None` means no particularization
+        strategy.
+    aggregation: {'harmonic', 'geometric', 'median'}
+        Strategy to aggregate values of *S*, *L*, *E*, and *D* for each cluster.
+
+    Returns
+    -------
+    score: float
+        Average SLEDge score.
+    """
+    assert aggregation is not None
+    return np.mean(
+        w_sledge_score_clusters(
+            X,
+            labels,
+            W,
+            particular_threshold=particular_threshold,
+            aggregation=aggregation))
